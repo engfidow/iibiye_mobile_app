@@ -1,137 +1,203 @@
+import 'package:flash_retail/providers/user_provider.dart';
+import 'package:flash_retail/screens/Sigin_screen.dart';
+import 'package:flash_retail/screens/change_pass_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:iconly/iconly.dart';
+import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final String userName = "Eng Sahal";
-  final String userProfilePicUrl = "https://via.placeholder.com/150";
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Delete Account',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text('Are you sure you want to delete your account?'),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                      onPressed: () {
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                      onPressed: () async {
+                        if (!mounted) return;
+                        Navigator.pop(context); // Close the bottom sheet
+                        await _deleteUserAccount();
+                      },
+                      child: const Text(
+                        'Yes, Delete',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteUserAccount() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    // Ensure context is valid before showing the dialog
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    bool success = false;
+    try {
+      success = await userProvider.deleteUser();
+    } catch (e) {
+      print('Error deleting user: $e');
+    }
+
+    // Ensure context is valid before closing the dialog
+    if (!mounted) return;
+    Navigator.pop(context); // Close the loading dialog
+
+    // Ensure context is valid before showing SnackBar
+    if (!mounted) return;
+    if (success) {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('Account deleted successfully')),
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const SigIn(),
+        ),
+      );
+    } else {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('Failed to delete account')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
         title: const Text('Settings'),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
-      body: Column(
+      body: ListView(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: NetworkImage(userProfilePicUrl),
-                  radius: 40,
-                ),
-                const SizedBox(width: 20),
-                Text(
-                  userName,
-                  style: Theme.of(context).textTheme.headline6,
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 2,
+                  blurRadius: 1,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: ListView(
-              children: [
-                _buildSettingItem(context, IconlyLight.profile, 'Profile', () {
-                  // Implement profile action
-                  _navigateToProfile(context);
-                }),
-                _buildSettingItem(context, Icons.palette, 'Change Theme', () {
-                  // Implement theme change action
-                  _changeTheme(context);
-                }),
-                _buildSettingItem(context, Icons.language, 'Change Language',
-                    () {
-                  // Implement language change action
-                  _changeLanguage(context);
-                }),
-                _buildSettingItem(
-                    context, IconlyLight.password, 'Change Password', () {
-                  // Implement language change action
-                  _changePassword(context);
-                }),
-                _buildSettingItem(context, IconlyLight.info_circle, 'Supports',
-                    () {
-                  // Implement supports action
-                  _navigateToSupport(context);
-                }),
-                _buildSettingItem(context, IconlyLight.logout, 'Logout', () {
-                  // Implement logout action
-                  _logout(context);
-                }),
-              ],
+            child: ListTile(
+              leading: const Icon(IconlyLight.lock, color: Colors.red),
+              title: const Text(
+                'Password Manager',
+                style: TextStyle(color: Colors.black),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.red),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ChangePassword()),
+                );
+              },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 60),
-            child: Text(
-              'Version 1.0.0',
-              style: TextStyle(color: Colors.grey),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 2,
+                  blurRadius: 1,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ListTile(
+              leading: const Icon(IconlyLight.delete, color: Colors.red),
+              title: const Text(
+                'Delete Account',
+                style: TextStyle(color: Colors.black),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.red),
+              onTap: () {
+                _showDeleteConfirmationDialog(context);
+              },
             ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildSettingItem(
-      BuildContext context, IconData icon, String title, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: ListTile(
-          leading: Icon(icon, color: Colors.black54),
-          title: Text(title, style: TextStyle(color: Colors.black87)),
-          trailing: const Icon(Icons.arrow_forward_ios,
-              color: Colors.black54, size: 14.0),
-          onTap: onTap,
-        ),
-      ),
-    );
-  }
-
-  void _navigateToProfile(BuildContext context) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Navigate to Profile')));
-  }
-
-  void _changeTheme(BuildContext context) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Theme Changed')));
-  }
-
-  void _changeLanguage(BuildContext context) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Language Changed')));
-  }
-
-  void _changePassword(BuildContext context) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('password Changed')));
-  }
-
-  void _navigateToSupport(BuildContext context) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Navigate to Supports')));
-  }
-
-  void _logout(BuildContext context) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Logged out')));
   }
 }

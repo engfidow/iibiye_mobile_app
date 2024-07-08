@@ -1,13 +1,58 @@
+import 'package:flash_retail/screens/transaction_info_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:flash_retail/providers/transaction_provider.dart';
 
-class TransactionScreen extends StatefulWidget {
+class TransactionScreen extends StatelessWidget {
   const TransactionScreen({super.key});
 
-  @override
-  State<TransactionScreen> createState() => _TransactionScreenState();
-}
+  String formatDate(String dateStr) {
+    final DateTime dateTime = DateTime.parse(dateStr);
+    final DateFormat formatter = DateFormat('MM/dd/yyyy HH:mm');
+    return formatter.format(dateTime);
+  }
 
-class _TransactionScreenState extends State<TransactionScreen> {
+  Widget buildShimmer() {
+    return ListView.builder(
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(vertical: 20.0, horizontal: 10.0),
+            leading: Container(
+              width: 100,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            title: Container(
+              width: 150,
+              height: 20,
+              color: Colors.white,
+            ),
+            subtitle: Container(
+              width: 100,
+              height: 20,
+              color: Colors.white,
+            ),
+            trailing: Container(
+              width: 50,
+              height: 20,
+              color: Colors.white,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -21,64 +66,74 @@ class _TransactionScreenState extends State<TransactionScreen> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.builder(
-              itemCount: 13,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  onTap: () {
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (context) => WatchScreen(
-                    //         courseName: coursesData?[index]['name'] ?? ''),
-                    //   ),
-                    // );
-                  },
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 20.0, horizontal: 10.0),
-                  leading: Container(
-                    width: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      image: const DecorationImage(
-                        image: NetworkImage(
-                            "https://i1.wp.com/afrotech.so/wp-content/uploads/2019/04/EVC-PLUS-Logo-01-230x128.png?fit=230%2C128&ssl=1"),
+      body: Consumer<TransactionProvider>(
+        builder: (context, transactionProvider, child) {
+          if (transactionProvider.isLoading) {
+            return buildShimmer();
+          }
+
+          if (transactionProvider.transactions.isEmpty) {
+            return const Center(child: Text("No transactions available."));
+          }
+
+          return ListView.builder(
+            itemCount: transactionProvider.transactions.length,
+            itemBuilder: (context, index) {
+              final transaction = transactionProvider.transactions[index];
+              return ListTile(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TransactionInfo(
+                        transaction: transaction,
+                      ),
+                    ),
+                  );
+                },
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 20.0, horizontal: 10.0),
+                leading: Container(
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    image: DecorationImage(
+                      image: AssetImage(
+                        transaction['paymentMethod'] == "EVC-PLUS"
+                            ? 'assets/EVC-PLUS.png'
+                            : 'assets/premier.png',
                       ),
                     ),
                   ),
-                  title: const Text(
-                    "EVC Plus",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                title: Text(
+                  transaction['_id'],
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
-                  subtitle: const Text(
-                    "conmplete",
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                subtitle: Text(
+                  formatDate(transaction['createdAt']),
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
-                  trailing: const Text(
-                    "\$ 7868",
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                trailing: Text(
+                  "\$${transaction['totalPrice']}",
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
